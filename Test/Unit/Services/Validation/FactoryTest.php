@@ -48,14 +48,19 @@ class FactoryTest extends TestCase
      * @return void
      * @throws \Exception
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
 
+        $request = $this->getObject(Validation\Request::class);
+        $request->setKeyFields(['postcode', 'huisnummer']);
+        $response = $this->getObject(Validation\Response::class);
+        $response->setKeyFields(['street', 'city']);
+
         $this->instance = $this->getInstance([
             'validators' => [
-                'request'  => $this->getObject(Validation\Request::class),
-                'response' => $this->getObject(Validation\Response::class),
+                'request'  => $request,
+                'response' => $response,
             ]
         ]);
     }
@@ -102,7 +107,7 @@ class FactoryTest extends TestCase
     /**
      * @return array[]
      */
-    public function requestDataProvider()
+    public static function requestDataProvider()
     {
         return [
             'Correct Data array' => [
@@ -126,6 +131,7 @@ class FactoryTest extends TestCase
      * @param $expected
      * @throws \TIG\Postcode\Exception
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('requestDataProvider')]
     public function testRequestValidator($data, $expected)
     {
         $this->assertSame($expected, $this->instance->validate('request', $data));
@@ -134,7 +140,7 @@ class FactoryTest extends TestCase
     /**
      * @return array[]
      */
-    public function responseDataProvider()
+    public static function responseDataProvider()
     {
         return [
             'Correct Data array' => [
@@ -142,16 +148,16 @@ class FactoryTest extends TestCase
                 true
             ],
             'Incorrect keys in Data array' => [
-                ['street' => 'kabelweg', 'city' => 'Amsterdam'],
+                ['city' => 'Amsterdam'],
                 false
             ],
             'Incorrect format of Data' => [
                 'This should be an array',
                 false
             ],
-            'Limit calls response' => [
+            'All configured fields present' => [
                 ['street' => 'Opvraag limiet bereikt', 'city' => 'Amsterdam'],
-                false
+                true
             ]
         ];
     }
@@ -159,7 +165,7 @@ class FactoryTest extends TestCase
     /**
      * @return array[]
      */
-    public function responseDataProviderBe()
+    public static function responseDataProviderBe()
     {
         return [
             'Correct Recursive Data array' => [
@@ -179,6 +185,7 @@ class FactoryTest extends TestCase
      * @param $expected
      * @throws \Exception
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('responseDataProvider')]
     public function testResponseValidator($data, $expected)
     {
         $this->assertSame($expected, $this->instance->validate('response', $data));
@@ -190,10 +197,11 @@ class FactoryTest extends TestCase
      * @param $expected
      * @throws \Exception
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('responseDataProviderBe')]
     public function testResponseValidatorForBECall($data, $expected)
     {
         $object = $this->getObject(Validation\Response::class);
-        $object->setKeys(['zipcode', 'city']);
+        $object->setKeyFields(['postcode', 'plaats']);
 
         $instance = $this->getInstance([
             'validators' => [
@@ -201,6 +209,9 @@ class FactoryTest extends TestCase
             ]
         ]);
 
-        $this->assertSame($expected, $instance->validate('response', $data));
+        $results = array_map(function ($item) use ($instance) {
+            return $instance->validate('response', $item);
+        }, $data);
+        $this->assertSame($expected, !in_array(false, $results, true));
     }
 }

@@ -31,356 +31,101 @@
  */
 namespace TIG\Postcode\Test\Unit\Webservice;
 
-use TIG\Postcode\Exception;
-use TIG\Postcode\Webservices\Api;
-use TIG\Postcode\Test\TestCase;
-
-use Magento\Framework\HTTP\ZendClient as ZendClient;
+use Laminas\Http\Client;
+use Laminas\Http\Client\Exception\RuntimeException;
+use Laminas\Http\Request;
+use Laminas\Http\Response;
+use Magento\Framework\HTTP\PhpEnvironment\ServerAddress;
 use TIG\Postcode\Config\Provider\ApiConfiguration;
 use TIG\Postcode\Config\Provider\ClientConfiguration;
-use TIG\Postcode\Webservices\Endpoints\GetNLAddressValidation;
 use TIG\Postcode\Services\Converter\Factory;
-use Magento\Framework\HTTP\PhpEnvironment\ServerAddress;
+use TIG\Postcode\Test\TestCase;
+use TIG\Postcode\Webservices\Api;
+use TIG\Postcode\Webservices\Endpoints\EndpointInterface;
 
 class ApiTest extends TestCase
 {
-    /** @var Api */
     protected $instanceClass = Api::class;
 
-    /**
-     * @var \PHPUnit_Framework_MockObject_MockObject
-     */
-    private $zendClient;
-
-    /**
-     * @var \PHPUnit_Framework_MockObject_MockObject
-     */
-    private $apiConfiguration;
-
-    /**
-     * @var \PHPUnit_Framework_MockObject_MockObject
-     */
-    private $clientConfiguration;
-
-    /**
-     * @var \PHPUnit_Framework_MockObject_MockObject
-     */
-    private $converter;
-
-    /**
-     * @var \PHPUnit_Framework_MockObject_MockObject
-     */
-    private $serverAddress;
-
-    /**
-     * @var \PHPUnit_Framework_MockObject_MockObject
-     */
-    private $endpoint;
-
-    /**
-     * @return void
-     */
-    public function setUp()
+    public static function requestProvider()
     {
-        $this->zendClient = $this->getMock(ZendClient::class);
-        $this->apiConfiguration = $this->getFakeMock(ApiConfiguration::class, true);
-        $this->clientConfiguration = $this->getFakeMock(ClientConfiguration::class, true);
-        $this->converter = $this->getFakeMock(Factory::class, true);
-        $this->serverAddress = $this->getFakeMock(ServerAddress::class)->disableOriginalConstructor()->getMock();
-        $this->endpoint = $this->getFakeMock(GetNLAddressValidation::class)->disableOriginalConstructor()->getMock();
-
-        return parent::setup();
+        return [
+            'NL v3 GET' => ['NL', 'v3', Request::METHOD_GET],
+            'NL v6 GET' => ['NL', 'v6', Request::METHOD_GET],
+            'NL v6 POST' => ['NL', 'v6', Request::METHOD_POST],
+            'BE GET' => ['BE', 'v3', Request::METHOD_GET],
+            'DE GET' => ['DE', 'v3', Request::METHOD_GET],
+            'FR GET' => ['FR', 'v3', Request::METHOD_GET],
+        ];
     }
 
-    /**
-     * @param array $args
-     *
-     * @return object
-     * @throws \Exception
-     */
-    public function getInstance(array $args = [])
+    /** @dataProvider requestProvider */
+    #[\PHPUnit\Framework\Attributes\DataProvider('requestProvider')]
+    public function testRequest($country, $version, $method)
     {
-        return parent::getInstance($args + [
-                'client' => $this->zendClient,
-                'apiConfiguration' => $this->apiConfiguration,
-                'clientConfiguration' => $this->clientConfiguration,
-                'converter' => $this->converter,
-                'serverAddress' => $this->serverAddress
+        $client = $this->createMock(Client::class);
+        $apiConfiguration = $this->createMock(ApiConfiguration::class);
+        $clientConfiguration = $this->createMock(ClientConfiguration::class);
+        $converter = $this->createMock(Factory::class);
+        $endpoint = $this->createMock(EndpointInterface::class);
+        $serverAddress = $this->createMock(ServerAddress::class);
+        $data = ['zipcode' => '1014BA', 'house_number' => '37'];
+        $endpoint->method('getCountry')->willReturn($country);
+        $endpoint->method('getEndpoint')->willReturn('address-validation/');
+        $endpoint->method('getMethod')->willReturn($method);
+        $endpoint->method('getResponseKeys')->willReturn(['results', 'error_code']);
+        $apiConfiguration->method('getVersion')->willReturn($version);
+        $baseMethod = $country === 'NL' ? 'getBaseUri' : 'get' . $country . 'BaseUri';
+        $apiConfiguration->expects($this->once())->method($baseMethod)->willReturn('https://example.com/');
+        $client->expects($this->once())->method('resetParameters');
+        $client->expects($this->once())->method('setUri')->with('https://example.com/address-validation/');
+        $client->expects($this->once())->method('setMethod')->with($method);
+        $clientConfiguration->expects($this->once())->method('getClientId')->willReturn('11111');
+        $clientConfiguration->expects($this->once())->method('getSecureCode')->willReturn('APIKEY');
+        $clientConfiguration->expects($this->once())->method('getDomainUrl')->willReturn('example.com');
+        if ($country === 'NL' && $version === 'v3') {
+            $withCredentials = $data + ['client_id' => '11111', 'secure_code' => 'APIKEY'];
+            $endpoint->expects($this->once())->method('setRequestData')->with($withCredentials);
+            $endpoint->method('getRequestData')->willReturnOnConsecutiveCalls($data, $withCredentials);
+            $data = $withCredentials;
+            $client->expects($this->never())->method('setHeaders');
+        } else {
+            $endpoint->method('getRequestData')->willReturn($data);
+            $client->expects($this->once())->method('setOptions')->with(['strict' => false]);
+            $client->expects($this->once())->method('setHeaders')->with([
+                'X-ClientId' => '11111', 'X-SecureCode' => 'APIKEY'
             ]);
+        }
+        $parameterMethod = $method === Request::METHOD_GET ? 'setParameterGet' : 'setParameterPost';
+        $client->expects($this->once())->method($parameterMethod)->with($data + ['domain' => 'example.com']);
+        $response = new Response();
+        $response->setContent('{}');
+        $client->expects($this->once())->method('send')->willReturn($response);
+        $converter->expects($this->once())->method('convert')
+            ->with('response', '{}', ['results', 'error_code'])->willReturn(['results' => []]);
+        $instance = new Api($client, $apiConfiguration, $clientConfiguration, $converter, $serverAddress);
+        $this->assertSame(['results' => []], $instance->getRequest($endpoint));
     }
 
-    /**
-     * @return void
-     * @throws \Zend_Http_Exception
-     */
-    public function testApiInstanceForVersionBelow4()
-    {
-        $resetZendParams = $this->zendClient->expects($this->once());
-        $resetZendParams->method('resetParameters');
-
-        //SetUri
-        $uri = 'https://api.fakelocation.com/v3/json/';
-        $apiConfigUri = $this->apiConfiguration->expects($this->once());
-        $apiConfigUri->method('getBaseUri')->willReturn($uri);
-
-        $endpointGetEndpoint = $this->endpoint->expects($this->once());
-        $endpointGetEndpoint->method('getEndpoint')->willReturn('getAddress/');
-
-        $zendClientUri = $this->zendClient->expects($this->once());
-        $zendClientUri->method('setUri')->with($uri.'getAddress/');
-
-        //SetHeaders
-        $apiConfigVersion = $this->apiConfiguration->expects($this->once());
-        $apiConfigVersion->method('getVersion')->willReturn('v3');
-
-        $requestData = [
-            'postcode' => '1014BA',
-            'huisnummer' => '37'
-        ];
-        $requestDataWithHeader = [
-            'postcode' => '1014BA',
-            'huisnummer' => '37',
-            'client_id' => '11111',
-            'secure_code' => 'APIKEY'
-        ];
-
-        $this->endpoint->expects($this->any())
-            ->method('getRequestData')->willReturnOnConsecutiveCalls($requestData, $requestDataWithHeader);
-
-        $clientConfigId = $this->clientConfiguration->expects($this->once());
-        $clientConfigId->method('getClientId')->willReturn('11111');
-
-        $clientConfigApi = $this->clientConfiguration->expects($this->once());
-        $clientConfigApi->method('getApiKey')->willReturn('APIKEY');
-
-        $endpointSetData = $this->endpoint->expects($this->once());
-        $endpointSetData->method('setRequestData')->with($requestDataWithHeader);
-
-        //SetParameters
-        $endpointMethod = $this->endpoint->expects($this->exactly(3));
-        $endpointMethod->method('getMethod')->willReturn(ZendClient::GET);
-
-        $zendClientSetMethod = $this->zendClient->expects($this->once());
-        $zendClientSetMethod->method('setMethod')->with(ZendClient::GET);
-
-        $clientConfigDomain = $this->clientConfiguration->expects($this->once());
-        $clientConfigDomain->method('getDomainUrl')->willReturn('www.fakedomain.com');
-
-        $serverIp = $this->serverAddress->expects($this->once());
-
-        $completedRequestParams = [
-            'postcode' => '1014BA',
-            'huisnummer' => '37',
-            'client_id' => '11111',
-            'secure_code' => 'APIKEY',
-            'domain' => 'www.fakedomain.com'
-        ];
-
-        $zendClientParams = $this->zendClient->expects($this->once());
-        $zendClientParams->method('setParameterGet')->with($completedRequestParams);
-
-        $fakeResponse = new \Zend_Http_Response('200', [], '{}');
-
-        $zendRequest = $this->zendClient->expects($this->once());
-        $zendRequest->method('request')->willReturn($fakeResponse);
-
-        $this->getInstance()->getRequest($this->endpoint);
-    }
-
-    /**
-     * @return void
-     * @throws \Zend_Http_Exception
-     */
-    public function testApiInstanceForVersionAbove4()
-    {
-        $resetZendParams = $this->zendClient->expects($this->once());
-        $resetZendParams->method('resetParameters');
-
-        //SetUri
-        $uri = 'https://api.fakelocation.com/v4/';
-        $apiConfigUri = $this->apiConfiguration->expects($this->once());
-        $apiConfigUri->method('getBaseUri')->willReturn($uri);
-
-        $endpointGetEndpoint = $this->endpoint->expects($this->once());
-        $endpointGetEndpoint->method('getEndpoint')->willReturn('getAddress/');
-
-        $zendClientUri = $this->zendClient->expects($this->once());
-        $zendClientUri->method('setUri')->with($uri.'getAddress/');
-
-        $requestData = ['postcode' => '1014BA', 'huisnummer' => '37'];
-        $requestDataWithHeader = ['postcode' => '1014BA', 'huisnummer' => '37'];
-
-        $this->endpoint->expects($this->any())
-            ->method('getRequestData')->willReturnOnConsecutiveCalls($requestData, $requestDataWithHeader);
-
-        $clientConfigId = $this->clientConfiguration->expects($this->once());
-        $clientConfigId->method('getClientId')->willReturn('11111');
-
-        $clientConfigApi = $this->clientConfiguration->expects($this->once());
-        $clientConfigApi->method('getApiKey')->willReturn('APIKEY');
-
-        //SetParameters
-        $endpointMethod = $this->endpoint->expects($this->exactly(3));
-        $endpointMethod->method('getMethod')->willReturn(ZendClient::GET);
-
-        $zendClientSetMethod = $this->zendClient->expects($this->once());
-        $zendClientSetMethod->method('setMethod')->with(ZendClient::GET);
-
-        $clientConfigDomain = $this->clientConfiguration->expects($this->once());
-        $clientConfigDomain->method('getDomainUrl')->willReturn('www.fakedomain.com');
-
-        $serverIp = $this->serverAddress->expects($this->once());
-        $serverIp->method('getServerAddress')->willReturn('127.0.0.1');
-
-        $completedRequestParams = ['postcode' => '1014BA', 'huisnummer' => '37',
-                                   'domain' => 'www.fakedomain.com'
-        ];
-
-        $zendClientParams = $this->zendClient->expects($this->once());
-        $zendClientParams->method('setParameterGet')->with($completedRequestParams);
-
-        $fakeResponse = new \Zend_Http_Response('200', [], '{}');
-
-        $zendRequest = $this->zendClient->expects($this->once());
-        $zendRequest->method('request')->willReturn($fakeResponse);
-
-        $this->getInstance()->getRequest($this->endpoint);
-    }
-
-    /**
-     * @return void
-     * @throws \Zend_Http_Exception
-     */
-    public function testApiInstanceForVersionAbove4AsPost()
-    {
-        $resetZendParams = $this->zendClient->expects($this->once());
-        $resetZendParams->method('resetParameters');
-
-        //SetUri
-        $uri = 'https://api.fakelocation.com/v4/';
-        $apiConfigUri = $this->apiConfiguration->expects($this->once());
-        $apiConfigUri->method('getBaseUri')->willReturn($uri);
-
-        $endpointGetEndpoint = $this->endpoint->expects($this->once());
-        $endpointGetEndpoint->method('getEndpoint')->willReturn('getAddress/');
-
-        $zendClientUri = $this->zendClient->expects($this->once());
-        $zendClientUri->method('setUri')->with($uri.'getAddress/');
-
-        $requestData = ['postcode' => '1014BA', 'huisnummer' => '37'];
-        $requestDataWithHeader = ['postcode' => '1014BA', 'huisnummer' => '37'];
-
-        $this->endpoint->expects($this->any())
-            ->method('getRequestData')->willReturnOnConsecutiveCalls($requestData, $requestDataWithHeader);
-
-        $clientConfigId = $this->clientConfiguration->expects($this->once());
-        $clientConfigId->method('getClientId')->willReturn('11111');
-
-        $clientConfigApi = $this->clientConfiguration->expects($this->once());
-        $clientConfigApi->method('getApiKey')->willReturn('APIKEY');
-
-        //SetParameters
-        $endpointMethod = $this->endpoint->expects($this->exactly(3));
-        $endpointMethod->method('getMethod')->willReturn(ZendClient::POST);
-
-        $zendClientSetMethod = $this->zendClient->expects($this->once());
-        $zendClientSetMethod->method('setMethod')->with(ZendClient::POST);
-
-        $clientConfigDomain = $this->clientConfiguration->expects($this->once());
-        $clientConfigDomain->method('getDomainUrl')->willReturn('www.fakedomain.com');
-
-        $serverIp = $this->serverAddress->expects($this->once());
-        $serverIp->method('getServerAddress')->willReturn('127.0.0.1');
-
-        $completedRequestParams = ['postcode' => '1014BA', 'huisnummer' => '37',
-                                   'domain' => 'www.fakedomain.com'
-        ];
-
-        $zendClientParams = $this->zendClient->expects($this->once());
-        $zendClientParams->method('setParameterPost')->with($completedRequestParams);
-
-        $fakeResponse = new \Zend_Http_Response('200', [], '{}');
-
-        $zendRequest = $this->zendClient->expects($this->once());
-        $zendRequest->method('request')->willReturn($fakeResponse);
-
-        $this->getInstance()->getRequest($this->endpoint);
-    }
-
-    /**
-     * @return void
-     * @throws \Zend_Http_Exception
-     */
-    public function testApiInstanceForBePostcode()
-    {
-        $resetZendParams = $this->zendClient->expects($this->once());
-        $resetZendParams->method('resetParameters');
-
-        //SetUri
-        $uri = 'https://api.fakelocation.com/be/v4/';
-        $apiConfigUri = $this->apiConfiguration->expects($this->once());
-        $apiConfigUri->method('getBeBaseUri')->willReturn($uri);
-
-        $endpointGetEndpoint = $this->endpoint->expects($this->exactly(3));
-        $endpointGetEndpoint->method('getEndpoint')->willReturn('zipcode-find/');
-
-        $endpointGetEndpointCountry = $this->endpoint->expects($this->exactly(2));
-        $endpointGetEndpointCountry->method('getCountry')->willReturn('BE');
-
-        $zendClientUri = $this->zendClient->expects($this->once());
-        $zendClientUri->method('setUri')->with($uri.'zipcode-find/');
-
-        $requestData = ['zipcodezone' => '1000'];
-        $requestDataWithHeader = ['zipcodezone' => '1000'];
-
-        $this->endpoint->expects($this->any())
-            ->method('getRequestData')->willReturnOnConsecutiveCalls($requestData, $requestDataWithHeader);
-
-        $clientConfigId = $this->clientConfiguration->expects($this->once());
-        $clientConfigId->method('getClientId')->willReturn('11111');
-
-        $clientConfigApi = $this->clientConfiguration->expects($this->once());
-        $clientConfigApi->method('getApiKey')->willReturn('APIKEY');
-
-        //SetParameters
-        $endpointMethod = $this->endpoint->expects($this->exactly(3));
-        $endpointMethod->method('getMethod')->willReturn(ZendClient::GET);
-
-        $zendClientSetMethod = $this->zendClient->expects($this->once());
-        $zendClientSetMethod->method('setMethod')->with(ZendClient::GET);
-
-        $clientConfigDomain = $this->clientConfiguration->expects($this->once());
-        $clientConfigDomain->method('getDomainUrl')->willReturn('www.fakedomain.com');
-
-        $serverIp = $this->serverAddress->expects($this->once());
-        $serverIp->method('getServerAddress')->willReturn('127.0.0.1');
-
-        $completedRequestParams = ['zipcodezone' => '1000',
-                                   'domain' => 'www.fakedomain.com'
-        ];
-
-        $zendClientParams = $this->zendClient->expects($this->once());
-        $zendClientParams->method('setParameterGet')->with($completedRequestParams);
-
-        $fakeResponse = new \Zend_Http_Response('200', [], '{}');
-
-        $zendRequest = $this->zendClient->expects($this->once());
-        $zendRequest->method('request')->willReturn($fakeResponse);
-
-        $this->getInstance()->getRequest($this->endpoint);
-    }
-
-    /**
-     * @return void
-     * @throws \Exception
-     */
     public function testApiWithHttpClientException()
     {
-        $zendRequest = $this->zendClient->expects($this->once());
-        $zendRequest->method('request')->willThrowException(new \Zend_Http_Client_Exception());
-
-        $response = $this->getInstance()->getRequest($this->endpoint);
-
-        $this->assertEquals(false, $response['success']);
+        $client = $this->createMock(Client::class);
+        $apiConfiguration = $this->createMock(ApiConfiguration::class);
+        $apiConfiguration->method('getVersion')->willReturn('v6');
+        $endpoint = $this->createMock(EndpointInterface::class);
+        $endpoint->method('getCountry')->willReturn('NL');
+        $endpoint->method('getMethod')->willReturn(Request::METHOD_GET);
+        $endpoint->method('getRequestData')->willReturn([]);
+        $client->expects($this->once())->method('send')->willThrowException(new RuntimeException('Failed', 500));
+        $instance = new Api(
+            $client,
+            $apiConfiguration,
+            $this->createMock(ClientConfiguration::class),
+            $this->createMock(Factory::class),
+            $this->createMock(ServerAddress::class)
+        );
+        $response = $instance->getRequest($endpoint);
+        $this->assertFalse($response['success']);
+        $this->assertSame('500 : Laminas Http Client exception', (string) $response['error']);
     }
 }

@@ -34,7 +34,7 @@ namespace TIG\Postcode\Test\Unit\Config\Provider;
 
 use TIG\Postcode\Config\Provider\ModuleConfiguration;
 
-class ModuleConfigurationTest extends AbstractConfigurationTest
+class ModuleConfigurationTest extends ConfigurationTestCase
 {
     /** @var ModuleConfiguration */
     protected $instanceClass = ModuleConfiguration::class;
@@ -42,7 +42,7 @@ class ModuleConfigurationTest extends AbstractConfigurationTest
     /**
      * @return array[]
      */
-    public function liveModusProvider()
+    public static function liveModusProvider()
     {
         return [
             'ModuleOutput disabled' => [false, false, '0'],
@@ -57,6 +57,7 @@ class ModuleConfigurationTest extends AbstractConfigurationTest
      * @param $expected
      * @param $modus
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('liveModusProvider')]
     public function testIsModusLive($moduleOutput, $expected, $modus)
     {
         $instance = $this->getInstance();
@@ -69,7 +70,7 @@ class ModuleConfigurationTest extends AbstractConfigurationTest
     /**
      * @return array[]
      */
-    public function modusTestProvider()
+    public static function modusTestProvider()
     {
         return [
             'ModuleOutput disabled' => [false, false, '0'],
@@ -84,6 +85,7 @@ class ModuleConfigurationTest extends AbstractConfigurationTest
      * @param $expected
      * @param $modus
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('modusTestProvider')]
     public function testIsModusTest($moduleOutput, $expected, $modus)
     {
         $instance = $this->getInstance();
@@ -96,7 +98,7 @@ class ModuleConfigurationTest extends AbstractConfigurationTest
     /**
      * @return array[]
      */
-    public function offModusProvider()
+    public static function offModusProvider()
     {
         return [
             'ModuleOutput disabled'           => [false, true, '0'],
@@ -112,6 +114,7 @@ class ModuleConfigurationTest extends AbstractConfigurationTest
      * @param $expected
      * @param $modus
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('offModusProvider')]
     public function testIsModusOff($moduleOutput, $expected, $modus)
     {
         $instance = $this->getInstance();
@@ -124,7 +127,7 @@ class ModuleConfigurationTest extends AbstractConfigurationTest
     /**
      * @return array[]
      */
-    public function modusProvider()
+    public static function modusProvider()
     {
         return [
             'Live modus and moduleOutput disabled' => ['1', false, '0'],
@@ -143,6 +146,7 @@ class ModuleConfigurationTest extends AbstractConfigurationTest
      * @param $moduleOutput
      * @param $expectedResult
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('modusProvider')]
     public function testGetModus($modus, $moduleOutput, $expectedResult)
     {
         $instance = $this->getInstance();
@@ -177,22 +181,11 @@ class ModuleConfigurationTest extends AbstractConfigurationTest
         $this->assertEquals($value, $instance->getSupportedMagentoVersions());
     }
 
-    /**
-     * @return void
-     */
-    public function testGetCheckoutCompatibility()
-    {
-        $value    = $this->getRandomSyntax();
-        $instance = $this->getInstance();
-
-        $this->setXpath(ModuleConfiguration::XPATH_CHECKOUT_COMPATIBILITY, $value);
-        $this->assertEquals($value, $instance->getCheckoutCompatibility());
-    }
 
     /**
      * @return array[]
      */
-    public function checkNLEnabledProvider()
+    public static function checkNLEnabledProvider()
     {
         return [
             'nl_on'  => [ModuleConfiguration::XPATH_NL_ENABLED, 1, 1],
@@ -203,7 +196,7 @@ class ModuleConfigurationTest extends AbstractConfigurationTest
     /**
      * @return array[]
      */
-    public function checkBEEnabledProvider()
+    public static function checkBEEnabledProvider()
     {
         return [
             'be_on'  => [ModuleConfiguration::XPATH_BE_ENABLED, 1, 1],
@@ -234,11 +227,12 @@ class ModuleConfigurationTest extends AbstractConfigurationTest
      *
      * @dataProvider checkNLEnabledProvider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('checkNLEnabledProvider')]
     public function testIsNLEnabled($xpath, $enabled, $expected)
     {
         $instance = $this->getInstance();
         $this->setXpath($xpath, $enabled);
-        $this->assertEquals($expected, $instance->isNLCheckEnabled());
+        $this->assertEquals($expected, $instance->isCountryCheckEnabled('NL'));
     }
 
     /**
@@ -248,10 +242,11 @@ class ModuleConfigurationTest extends AbstractConfigurationTest
      *
      * @dataProvider checkBEEnabledProvider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('checkBEEnabledProvider')]
     public function testIsBEEnabled($xpath, $enabled, $expected)
     {
         $instance = $this->getInstance();
         $this->setXpath($xpath, $enabled);
-        $this->assertEquals($expected, $instance->isBECheckEnabled());
+        $this->assertEquals($expected, $instance->isCountryCheckEnabled('BE'));
     }
 }

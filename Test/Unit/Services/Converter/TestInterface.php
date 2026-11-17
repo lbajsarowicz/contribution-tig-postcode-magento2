@@ -34,7 +34,7 @@ namespace TIG\Postcode\Test\Unit\Services\Converter;
 use TIG\Postcode\Services\Converter\ConverterInterface;
 use TIG\Postcode\Test\TestCase;
 
-class TestInterface extends TestCase
+abstract class TestInterface extends TestCase
 {
     /**
      * @return void

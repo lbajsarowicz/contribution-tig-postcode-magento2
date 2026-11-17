@@ -49,7 +49,7 @@ class FactoryTest extends TestCase
      * @return void
      * @throws \Exception
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
 

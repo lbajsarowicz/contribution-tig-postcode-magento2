@@ -34,7 +34,7 @@ namespace TIG\Postcode\Test\Unit\Services\Validation;
 use TIG\Postcode\Services\Validation\ValidationInterface;
 use TIG\Postcode\Test\TestCase;
 
-class TestInterface extends TestCase
+abstract class TestInterface extends TestCase
 {
     /**
      * @return void

@@ -31,310 +31,78 @@
  */
 namespace TIG\Postcode\Test\Unit\Controller\Address;
 
-use TIG\Postcode\Test\TestCase;
-use TIG\Postcode\Controller\Address\Service;
-use Magento\Backend\App\Action\Context;
+use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\RequestInterface;
-use TIG\Postcode\Services\Converter\Factory;
-use TIG\Postcode\Webservices\Endpoints\GetNLAddressValidation;
-use TIG\Postcode\Webservices\Endpoints\GetBEZipcodeFind;
-use TIG\Postcode\Webservices\Endpoints\GetBEStreetFind;
-use TIG\Postcode\Webservices\Endpoints\GetDEZipcodeFind;
-use TIG\Postcode\Webservices\Endpoints\GetDEStreetFind;
-use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Framework\Controller\Result\Json;
+use Magento\Framework\Controller\Result\JsonFactory;
+use TIG\Postcode\Controller\Address\Service;
+use TIG\Postcode\Services\Converter\Factory;
+use TIG\Postcode\Test\TestCase;
+use TIG\Postcode\Webservices\Endpoints;
 
 class ServiceTest extends TestCase
 {
-    /** @var Service */
-    protected $instanceClass = Service::class;
-
-    /**
-     * @return array
-     */
-    public function dataProvider()
+    public static function requestProvider()
     {
         return [
-            'request converter fails' => [
-                false,
-                []
-            ],
-            'call fails'              => [
-                [
-                    'postcode' => '1014BA', 'huisnummer' => '37'
-                ],
-                [
-                    'postcode' => '1014BA', 'huisnummer' => '37'
-                ]
-            ],
-            'be postcode succeeds'    => [
-                [
-                    'be' => 'getpostcode', 'zipcodezone' => '1000'
-                ],
-                [
-                    'be' => 'getpostcode', 'zipcodezone' => '1000'
-                ]
-            ],
-            'be street succeeds'      => [
-                [
-                    'be'      => 'getstreet',
-                    'city'    => 'Brussel',
-                    'zipcode' => '1000',
-                    'street'  => 'Zandstraat'
-                ],
-                [
-                    'be'      => 'getstreet',
-                    'city'    => 'Brussel',
-                    'zipcode' => '1000',
-                    'street'  => 'Zandstraat'
-                ]
-            ],
-            'de postcode succeeds'    => [
-                [
-                    'de' => 'getpostcode', 'zipcodezone' => '40723'
-                ],
-                [
-                    'de' => 'getpostcode', 'zipcodezone' => '40723'
-                ]
-            ],
-            'de street succeeds'      => [
-                [
-                    'de'      => 'getstreet',
-                    'city'    => 'Hilden',
-                    'zipcode' => '40723',
-                    'street'  => 'Kalstert'
-                ],
-                [
-                    'de'      => 'getstreet',
-                    'city'    => 'Hilden',
-                    'zipcode' => '40723',
-                    'street'  => 'Kalstert'
-                ]
-            ]
+            'NL success' => ['nl', 'postcodecheck', true, true],
+            'BE postcode' => ['be', 'getpostcode', true, true],
+            'BE street' => ['be', 'getstreet', true, true],
+            'DE postcode' => ['de', 'getpostcode', true, true],
+            'DE street' => ['de', 'getstreet', true, true],
+            'FR postcode' => ['fr', 'getpostcode', true, true],
+            'FR street' => ['fr', 'getstreet', true, true],
+            'invalid request' => ['nl', 'postcodecheck', false, true],
+            'invalid response' => ['nl', 'postcodecheck', true, false]
         ];
     }
 
-    /**
-     * @param $converterFails
-     * @param $params
-     *
-     * @dataProvider dataProvider
-     * @throws \Exception
-     */
-    public function testExecuteShouldAlwaysReturnJsonObject($converterFails, $params)
+    /** @dataProvider requestProvider */
+    #[\PHPUnit\Framework\Attributes\DataProvider('requestProvider')]
+    public function testExecute($country, $method, $validRequest, $validResponse)
     {
-        $instance = $this->getInstance([
-            'context' => $this->getContextMock($params),
-            'jsonFactory' => $this->getJsonFactory(),
-            'converterFactory' => $this->getConverterMock($converterFails, $params),
-            'getAddress' => $this->getAddressCallMock($converterFails, $params),
-            'getBePostcode' => $this->getBePostcodeCallMock($converterFails, $params),
-            'getBeStreet' => $this->getBeStreetCallMock($converterFails, $params),
-            'getDePostcode' => $this->getDePostcodeCallMock($converterFails, $params),
-            'getDeStreet' => $this->getDeStreetCallMock($converterFails, $params),
-        ]);
-
-        $result = $instance->execute();
-        $this->assertTrue($result instanceof \Magento\Framework\Controller\Result\Json);
-    }
-
-    /**
-     * @param $converterFails
-     * @param $params
-     *
-     * @dataProvider dataProvider
-     * @throws \Exception
-     */
-    public function testExecuteWithEmptyResultShouldAlwaysReturnJsonObject($converterFails, $params)
-    {
-        $instance = $this->getInstance([
-            'context' => $this->getContextMock($params),
-            'jsonFactory' => $this->getJsonFactory(),
-            'converterFactory' => $this->getConverterMock($converterFails, $params),
-            'getAddress' => $this->getAddressCallMock($converterFails, $params, true),
-            'getBePostcode' => $this->getBePostcodeCallMock($converterFails, $params),
-            'getBeStreet' => $this->getBeStreetCallMock($converterFails, $params),
-            'getDePostcode' => $this->getDePostcodeCallMock($converterFails, $params),
-            'getDeStreet' => $this->getDeStreetCallMock($converterFails, $params),
-        ]);
-
-        $result = $instance->execute();
-        $this->assertTrue($result instanceof \Magento\Framework\Controller\Result\Json);
-    }
-
-    /**
-     * @return mixed
-     * @throws \Exception
-     */
-    private function getJsonFactory()
-    {
-        $jsonFactoryMock = $this->getFakeMock(JsonFactory::class)->setMethods(['create'])->getMock();
-        $jsonFactoryMock->expects($this->once())->method('create')->willReturn($this->getObject(Json::class));
-
-        return $jsonFactoryMock;
-    }
-
-    /**
-     * @param $params
-     * @param bool $returns
-     * @param bool $failResponse
-     * @return mixed
-     */
-    private function getAddressCallMock($params, bool $returns = false, bool $failResponse = false)
-    {
-        $addressMock = $this->getFakeMock(GetNLAddressValidation::class)->setMethods([
-            'setRequestData', 'call', 'getCountry', 'getMethod'
-        ])->getMock();
-
-        $setExpects = $addressMock->expects($this->any());
-        $setExpects->method('setRequestData')->with($params);
-
-        $callExpects = $addressMock->expects($this->any());
-
-        if ($failResponse) {
-            $callExpects->method('call')->willReturn(false);
-        } else {
-            $callExpects->method('call')->willReturn($returns);
+        $params = [$country => $method, 'zipcode' => '1014BA', 'house_number' => '37'];
+        $request = $this->createMock(RequestInterface::class);
+        $request->method('getParams')->willReturn($params);
+        $context = $this->createMock(Context::class);
+        $context->method('getRequest')->willReturn($request);
+        $classes = [
+            'nl' => ['postcodecheck' => Endpoints\GetNLAddressValidation::class],
+            'be' => ['getpostcode' => Endpoints\GetBEZipcodeFind::class, 'getstreet' => Endpoints\GetBEStreetFind::class],
+            'de' => ['getpostcode' => Endpoints\GetDEZipcodeFind::class, 'getstreet' => Endpoints\GetDEStreetFind::class],
+            'fr' => ['getpostcode' => Endpoints\GetFRZipcodeFind::class, 'getstreet' => Endpoints\GetFRStreetFind::class]
+        ];
+        $endpoints = [];
+        $result = ['results' => [['street' => 'Kabelweg']]];
+        foreach ($classes as $endpointCountry => $methods) {
+            foreach ($methods as $endpointMethod => $class) {
+                $endpoint = $this->createMock($class);
+                $selected = $endpointCountry === $country && $endpointMethod === $method;
+                if ($selected) {
+                    $endpoint->expects($this->once())->method('getRequestKeys')->willReturn(['zipcode', 'house_number']);
+                }
+                $endpoint->expects($selected && $validRequest ? $this->once() : $this->never())
+                    ->method('setRequestData')->with($params);
+                $endpoint->expects($selected && $validRequest ? $this->once() : $this->never())
+                    ->method('call')->willReturn($validResponse ? $result : false);
+                $endpoints[] = $endpoint;
+            }
         }
-
-        $countryExpects = $addressMock->expects($this->any());
-        $countryExpects->method('getCountry')->willReturn('nl');
-
-        $methodExpects = $addressMock->expects($this->any());
-        $methodExpects->method('getMethod')->willReturn('postcodecheck');
-
-        return $addressMock;
-    }
-
-    /**
-     * @param $params
-     * @param bool $returns
-     * @return mixed
-     */
-    private function getBePostcodeCallMock($params, bool $returns = false)
-    {
-        $addressMock = $this->getFakeMock(GetBEZipcodeFind::class)->setMethods([
-            'setRequestData', 'call', 'getCountry', 'getMethod'
-        ])->getMock();
-
-        $setExpects = $addressMock->expects($this->any());
-        $setExpects->method('setRequestData')->with($params);
-
-        $callExpects = $addressMock->expects($this->any());
-        $callExpects->method('call')->willReturn($returns);
-
-        $countryExpects = $addressMock->expects($this->any());
-        $countryExpects->method('getCountry')->willReturn('be');
-
-        $methodExpects = $addressMock->expects($this->any());
-        $methodExpects->method('getMethod')->willReturn('getpostcode');
-
-        return $addressMock;
-    }
-
-    /**
-     * @param $params
-     * @param bool $returns
-     * @return mixed
-     */
-    private function getDePostcodeCallMock($params, bool $returns = false)
-    {
-        $addressMock = $this->getFakeMock(GetDEZipcodeFind::class)->setMethods([
-            'setRequestData', 'call', 'getCountry', 'getMethod'
-        ])->getMock();
-
-        $setExpects = $addressMock->expects($this->any());
-        $setExpects->method('setRequestData')->with($params);
-
-        $callExpects = $addressMock->expects($this->any());
-        $callExpects->method('call')->willReturn($returns);
-
-        $countryExpects = $addressMock->expects($this->any());
-        $countryExpects->method('getCountry')->willReturn('de');
-
-        $methodExpects = $addressMock->expects($this->any());
-        $methodExpects->method('getMethod')->willReturn('getpostcode');
-
-        return $addressMock;
-    }
-
-    /**
-     * @param $params
-     * @param bool $returns
-     * @return mixed
-     */
-    private function getBeStreetCallMock($params, bool $returns = false)
-    {
-        $addressMock = $this->getFakeMock(GetBEStreetFind::class)->setMethods([
-            'setRequestData', 'call', 'getCountry', 'getMethod'
-        ])->getMock();
-
-        $setExpects = $addressMock->expects($this->any());
-        $setExpects->method('setRequestData')->with($params);
-
-        $callExpects = $addressMock->expects($this->any());
-        $callExpects->method('call')->willReturn($returns);
-
-        $countryExpects = $addressMock->expects($this->any());
-        $countryExpects->method('getCountry')->willReturn('be');
-
-        $methodExpects = $addressMock->expects($this->any());
-        $methodExpects->method('getMethod')->willReturn('getstreet');
-
-        return $addressMock;
-    }
-
-    /**
-     * @param $params
-     * @param bool $returns
-     * @return mixed
-     */
-    private function getDeStreetCallMock($params, bool $returns = false)
-    {
-        $addressMock = $this->getFakeMock(GetDEStreetFind::class)->setMethods([
-            'setRequestData', 'call', 'getCountry', 'getMethod'
-        ])->getMock();
-
-        $setExpects = $addressMock->expects($this->any());
-        $setExpects->method('setRequestData')->with($params);
-
-        $callExpects = $addressMock->expects($this->any());
-        $callExpects->method('call')->willReturn($returns);
-
-        $countryExpects = $addressMock->expects($this->any());
-        $countryExpects->method('getCountry')->willReturn('de');
-
-        $methodExpects = $addressMock->expects($this->any());
-        $methodExpects->method('getMethod')->willReturn('getstreet');
-
-        return $addressMock;
-    }
-
-    /**
-     * @param $returns
-     * @param $params
-     * @return mixed
-     */
-    private function getConverterMock($returns = true, $params = [])
-    {
-        $converterMock = $this->getFakeMock(Factory::class)->setMethods(['convert'])->getMock();
-        $converterMock->expects($this->once())->method('convert')->with('request', $params)->willReturn($returns);
-
-        return $converterMock;
-    }
-
-    /**
-     * @param $returns
-     * @return mixed
-     */
-    private function getContextMock($returns = [])
-    {
-        $requestMock = $this->getFakeMock(RequestInterface::class)->getMockForAbstractClass();
-        $requestMock->expects($this->once())->method('getParams')->willReturn($returns);
-
-        $contextMock = $this->getFakeMock(Context::class)->setMethods(['getRequest'])->getMock();
-        $contextMock->expects($this->atLeastOnce())->method('getRequest')->willReturn($requestMock);
-
-        return $contextMock;
+        $converter = $this->createMock(Factory::class);
+        $converter->expects($this->once())->method('convert')
+            ->with('request', $params, ['zipcode', 'house_number'])->willReturn($validRequest ? $params : false);
+        $json = $this->createMock(Json::class);
+        $expected = $result;
+        if (!$validRequest || !$validResponse) {
+            $expected = [
+                'success' => false,
+                'error' => $validRequest ? 'Response keys validation failed' : 'Request keys validation failed'
+            ];
+        }
+        $json->expects($this->once())->method('setData')->with($expected)->willReturnSelf();
+        $jsonFactory = $this->createMock(JsonFactory::class);
+        $jsonFactory->expects($this->once())->method('create')->willReturn($json);
+        $instance = new Service($context, $jsonFactory, $converter, ...$endpoints);
+        $this->assertSame($json, $instance->execute());
     }
 }

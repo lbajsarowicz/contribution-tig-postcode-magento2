@@ -47,7 +47,7 @@ class FieldsetTest extends TestCase
     /**
      * @return array
      */
-    public function fieldProvider()
+    public static function fieldProvider()
     {
         return [
             'inactive' => [
@@ -71,20 +71,21 @@ class FieldsetTest extends TestCase
      * @dataProvider fieldProvider
      * @throws \Exception
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('fieldProvider')]
     public function testGetFrontendClass($configValue, $expected)
     {
-        $elementMock = $this->getFakeMock(AbstractElement::class)->getMockForAbstractClass();
-        $requestMock = $this->getFakeMock(RequestInterface::class)->getMockForAbstractClass();
+        $elementMock = $this->getFakeMock(AbstractElement::class)->getMock();
+        $requestMock = $this->getFakeMock(RequestInterface::class)->getMock();
 
-        $scopeConfigMock = $this->getFakeMock(ScopeConfigInterface::class)->getMockForAbstractClass();
+        $scopeConfigMock = $this->getFakeMock(ScopeConfigInterface::class)->getMock();
         $scopeConfigMock->expects($this->once())->method('getValue')->willReturn($configValue);
 
-        $contextMock = $this->getFakeMock(Context::class)->setMethods(['getScopeConfig', 'getRequest'])->getMock();
+        $contextMock = $this->getFakeMock(Context::class)->onlyMethods(['getScopeConfig', 'getRequest'])->getMock();
         $contextMock->expects($this->once())->method('getScopeConfig')->willReturn($scopeConfigMock);
         $contextMock->expects($this->once())->method('getRequest')->willReturn($requestMock);
 
         $instance = $this->getInstance(['context' => $contextMock]);
         $result   = $this->invokeArgs('_getFrontendClass', [$elementMock], $instance);
-        $this->assertContains($expected, $result);
+        $this->assertStringContainsString($expected, $result);
     }
 }

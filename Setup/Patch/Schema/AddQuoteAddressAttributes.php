@@ -94,6 +94,8 @@ class AddQuoteAddressAttributes implements SchemaPatchInterface
         );
 
         $this->moduleDataSetup->endSetup();
+
+        return $this;
     }
 
     /**

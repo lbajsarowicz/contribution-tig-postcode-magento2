@@ -31,367 +31,60 @@
  */
 namespace TIG\Postcode\Test\Unit\Plugin\Address;
 
-use TIG\Postcode\Test\TestCase;
-use TIG\Postcode\Plugin\Address\LayoutProcessor;
-use TIG\Postcode\Config\Provider\ModuleConfiguration;
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\Notification\NotifierInterface;
+use Magento\Framework\Stdlib\ArrayManager;
+use TIG\Postcode\Plugin\Model\Checkout\LayoutProcessorPlugin;
+use TIG\Postcode\Test\TestCase;
 
 class LayoutProcessorTest extends TestCase
 {
-    /** @var LayoutProcessor */
-    protected $instanceClass = LayoutProcessor::class;
+    protected $instanceClass = LayoutProcessorPlugin::class;
 
-    /** @var array[]  */
-    private $addressFieldsForMultipleBillingFields = [
-        'components' => [
-            'checkout' => [
-                'children' => [
-                    'steps' => [
-                        'children' => [
-                            'shipping-step' => [
-                                'children' => [
-                                    'shippingAddress' => [
-                                        'children' => [
-                                            'shipping-address-fieldset' => [
-                                                'children' => [
-                                                    'postcode' => [
-                                                        'config' => [
-                                                            'additionalClasses' => 'test'
-                                                        ]
-                                                    ],
-                                                    'street' => [
-                                                        'children' => [
-                                                            0 => [
-                                                                'config' => [
-                                                                    'additionalClasses' => 'test'
-                                                                ]
-                                                            ]
-                                                        ]
-                                                    ]
-                                                ]
-                                            ]
-                                        ]
-                                    ]
-                                ]
-                            ],
-                            'billing-step' => [
-                                'children' => [
-                                    'payment' => [
-                                        'children' => [
-                                            'payments-list' => [
-                                                'children' => [
-                                                    'test' => [
-                                                        'children' => [
-                                                            'form-fields' => [
-                                                                'children' => [
-                                                                    'postcode' => []
-                                                                ]
-                                                            ]
-                                                        ]
-                                                    ],
-                                                    'test-form' => [
-                                                        'children' => [
-                                                            'form-fields' => [
-                                                                'children' => [
-                                                                    'postcode' => []
-                                                                ]
-                                                            ],
-                                                        ],
-                                                        'dataScopePrefix' => 'billing'
-                                                    ]
-                                                ]
-                                            ],
-                                            'afterMethods' => [
-                                                'children' => [
-                                                    'billing-address-form' => [
-                                                        'children' => [
-                                                            'form-fields' => [
-                                                                'children' => [
-                                                                    'postcode' => []
-                                                                ]
-                                                            ]
-                                                        ],
-                                                        'dataScopePrefix' => 'billing'
-                                                    ]
-                                                ]
-                                            ]
-                                        ]
-                                    ]
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
-        ]
-    ];
-
-    /** @var array[]  */
-    private $addressFields = [
-        'components' => [
-            'checkout' => [
-                'children' => [
-                    'steps' => [
-                        'children' => [
-                            'shipping-step' => [
-                                'children' => [
-                                    'shippingAddress' => [
-                                        'children' => [
-                                            'shipping-address-fieldset' => [
-                                                'children' => [
-                                                    'postcode' => [
-                                                        'config' => [
-                                                            'additionalClasses' => 'test'
-                                                        ]
-                                                    ]
-                                                ]
-                                            ]
-                                        ]
-                                    ]
-                                ]
-                            ],
-                            'billing-step' => [
-                                'children' => [
-                                    'payment' => [
-                                        'children' => [
-                                            'payments-list' => [
-                                                'children' => [
-                                                    'form-fields' => [
-                                                        'children' => [
-                                                            'postcode' => []
-                                                        ]
-                                                    ]
-                                                ]
-                                            ],
-                                            'afterMethods' => [
-                                                'children' => [
-                                                    'billing-address-form' => [
-                                                        'children' => [
-                                                            'form-fields' => [
-                                                                'children' => [
-                                                                    'postcode' => []
-                                                                ]
-                                                            ]
-                                                        ],
-                                                        'dataScopePrefix' => 'billing'
-                                                    ]
-                                                ]
-                                            ]
-                                        ]
-                                    ]
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
-        ]
-    ];
-
-    /** @var array[]  */
-    private $addressFieldsWithoutBilling = [
-        'components' => [
-            'checkout' => [
-                'children' => [
-                    'steps' => [
-                        'children' => [
-                            'shipping-step' => [
-                                'children' => [
-                                    'shippingAddress' => [
-                                        'children' => [
-                                            'shipping-address-fieldset' => [
-                                                'children' => [
-                                                    'postcode' => [
-                                                        'config' => [
-                                                            'additionalClasses' => 'test'
-                                                        ]
-                                                    ]
-                                                ]
-                                            ]
-                                        ]
-                                    ]
-                                ]
-                            ],
-                            'billing-step' => [
-                                'children' => [
-                                    'payment' => [
-                                        'children' => [
-                                            'payments-list' => [
-                                                'children' => [
-                                                    'form-fields' => [
-                                                        'children' => [
-                                                            'postcode' => []
-                                                        ]
-                                                    ]
-                                                ]
-                                            ]
-                                        ]
-                                    ]
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
-        ]
-    ];
-
-    /**
-     * @return array
-     */
-    public function dataProvider()
+    public function testAfterProcess()
     {
-        return [
-            'isDisplayBillingOnPaymentMethodAvailble true' => [true, $this->addressFields, true],
-            'isDisplayBillingOnPaymentMethodAvailble false' => [false,
-                $this->addressFieldsForMultipleBillingFields,
-                true],
-            'isDisplayBillingOnPaymentMethodAvailble true without billingfields' =>
-            [
-                true, $this->addressFieldsWithoutBilling, false
-            ]
-        ];
-    }
-
-    /**
-     * @return array
-     */
-    public function beDataProvider()
-    {
-        return [
-            'test without additional classes' => [$this->addressFieldsForMultipleBillingFields],
-//            'test with additional classes' => [$this->addressFieldsForAdditionalClasses]
-        ];
-    }
-
-    /**
-     * @param $isDisplayBillingOnPaymentMethodAvailble
-     * @param $fields
-     * @param $hasBilling
-     *
-     * @dataProvider dataProvider
-     * @throws \Exception
-     */
-    public function testAfterProcess($isDisplayBillingOnPaymentMethodAvailble, $fields, $hasBilling)
-    {
-        $instance = $this->getInstance([
-            'moduleConfiguration' => $this->getModuleMock(false, true),
-            'scopeConfig' => $this->getScopeConfigMock($isDisplayBillingOnPaymentMethodAvailble)
-        ]);
-
-        $result = $instance->afterProcess(null, $fields);
-
-        if (!$hasBilling) {
-            $billingField = $result['components']['checkout']['children']['steps']['children']['billing-step']
-                            ['children']['payment']['children']['payments-list']['children'];
-            $this->assertTrue(count($billingField) == 1);
-            return;
-        }
-
-        $checkBillingFields = $result['components']['checkout']['children']['steps']['children']['billing-step']
-        ['children']['payment']['children']['afterMethods']['children']
-        ['billing-address-form']['children']['form-fields']['children'];
-
-        $checkShippingFields = $result['components']['checkout']['children']['steps']['children']['shipping-step']
-                               ['children']['shippingAddress']['children']['shipping-address-fieldset']['children'];
-
-        if (!$isDisplayBillingOnPaymentMethodAvailble) {
-            $checkBillingFields = $result['components']['checkout']['children']['steps']['children']['billing-step']
-                                  ['children']['payment']['children']['payments-list']['children']['test-form']
-                                  ['children']['form-fields']['children'];
-        }
-
-        $this->assertArrayHasKey('postcode-field-group', $checkBillingFields);
-        $this->assertArrayHasKey('postcode-field-group', $checkShippingFields);
-    }
-
-    /**
-     * @return void
-     * @throws \Exception
-     */
-    public function testBeAfterProcess()
-    {
-        $instance = $this->getInstance([
-            'moduleConfiguration' => $this->getModuleMock(false, false, true),
-            'scopeConfig' => $this->getScopeConfigMock(true)
-        ]);
-
-        $result = $instance->afterProcess(null, $this->addressFieldsForMultipleBillingFields);
-
-        $checkShippingFields = $result['components']['checkout']['children']['steps']['children']['shipping-step']
-                               ['children']['shippingAddress']['children']['shipping-address-fieldset']['children'];
-
-        $checkBillingFields = $result['components']['checkout']['children']['steps']['children']['billing-step']
-                              ['children']['payment']['children']['payments-list']['children']['test-form']
-                              ['children']['form-fields']['children'];
-
-        $this->assertContains(
-            'tig_zipcodezone_autocomplete',
-            $checkBillingFields['postcode']['config']['additionalClasses']
+        $notifier = $this->createMock(NotifierInterface::class);
+        $notifier->expects($this->never())->method('addMajor');
+        $instance = new LayoutProcessorPlugin(
+            new ArrayManager(),
+            $notifier,
+            $this->createMock(ScopeConfigInterface::class)
         );
-        $this->assertContains(
-            'tig_zipcodezone_autocomplete',
-            $checkShippingFields['postcode']['config']['additionalClasses']
-        );
-    }
-
-    /**
-     * @return void
-     * @throws \Exception
-     */
-    public function testAfterProcessWhereModusIsOff()
-    {
-        $instance = $this->getInstance([
-            'moduleConfiguration' => $this->getModuleMock(true)
-        ]);
-
-        $result = $instance->afterProcess(null, $this->addressFields);
-
-        $this->assertEquals($this->addressFields, $result);
-    }
-
-    /**
-     * @param bool $returns
-     *
-     * @return \PHPUnit_Framework_MockObject_MockObject
-     */
-    private function getScopeConfigMock($returns = false)
-    {
-        $scopeMock = $this->getFakeMock(ScopeConfigInterface::class)->getMock();
-        $scopeExpects = $scopeMock->expects($this->any());
-        $scopeExpects->method('getValue')->with(
-            'checkout/options/display_billing_address_on',
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
-        );
-        $scopeExpects->willReturn($returns);
-
-        return $scopeMock;
-    }
-
-    /**
-     * @param bool $returns
-     * @param bool $nl
-     * @param bool $be
-     *
-     * @return \PHPUnit_Framework_MockObject_MockObject
-     */
-    private function getModuleMock($returns = false, $nl = false, $be = false)
-    {
-        $moduleMock = $this->getFakeMock(ModuleConfiguration::class)->getMock();
-        $moduleExpects = $moduleMock->expects($this->once());
-        $moduleExpects->method('isModusOff');
-        $moduleExpects->willReturn($returns);
-
-        if (!$returns) {
-            $moduleCheckNl = $moduleMock->expects($this->any());
-            $moduleCheckNl->method('isNLCheckEnabled');
-            $moduleCheckNl->willReturn($nl);
-
-            $moduleCheckBe = $moduleMock->expects($this->any());
-            $moduleCheckBe->method('isBECheckEnabled');
-            $moduleCheckBe->willReturn($be);
+        $layout = ['shippingAddress' => ['children' => [
+            'postcode' => [
+                'component' => 'Magento_Ui/js/form/element/post-code',
+                'dataScope' => 'shippingAddress.postcode'
+            ],
+            'street' => [],
+            'city' => []
+        ]]];
+        $result = $instance->afterProcess(null, $layout);
+        $fields = $result['shippingAddress']['children'];
+        $this->assertSame('TIG_Postcode/js/form/element/tig-postcode-field', $fields['postcode']['component']);
+        $this->assertSame('TIG_Postcode/form/element/postcode-field', $fields['postcode']['config']['elementTmpl']);
+        $this->assertSame(50, $fields['postcode']['config']['sortOrder']);
+        foreach (['street', 'city', 'postcode'] as $field) {
+            $this->assertTrue($fields[$field]['tracks']['additionalClasses']);
         }
+        $this->assertSame('shippingAddress.custom_attributes.tig_housenumber', $fields['tig_housenumber']['dataScope']);
+        $this->assertSame(51, $fields['tig_housenumber']['sortOrder']);
+        $this->assertArrayHasKey('tig_housenumber_addition', $fields);
+        $this->assertArrayHasKey('tig_street', $fields);
+    }
 
-        return $moduleMock;
+    public function testIncompatibleFieldIsReported()
+    {
+        $notifier = $this->createMock(NotifierInterface::class);
+        $notifier->expects($this->once())->method('addMajor')->with(
+            'TIG Postcode',
+            'Postcodeservice detected one or more compatibility issues with your shop setup'
+        );
+        $instance = new LayoutProcessorPlugin(
+            new ArrayManager(),
+            $notifier,
+            $this->createMock(ScopeConfigInterface::class)
+        );
+        $layout = ['postcode' => ['component' => 'custom/postcode']];
+        $this->assertSame($layout, $instance->afterProcess(null, $layout));
     }
 }

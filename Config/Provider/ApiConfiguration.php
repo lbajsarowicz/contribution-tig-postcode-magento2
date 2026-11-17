@@ -113,7 +113,7 @@ class ApiConfiguration extends AbstractConfigProvider
      *
      * @return mixed
      */
-    public function getBase(string $country = 'NL', int|string $store = null): mixed
+    public function getBase(string $country = 'NL', int|string|null $store = null): mixed
     {
         $xpath = match ($country) {
             'BE' => static::XPATH_API_BE_BASE,
@@ -134,7 +134,7 @@ class ApiConfiguration extends AbstractConfigProvider
      *
      * @return mixed
      */
-    public function getVersion(string $country = 'NL', string $endpoint = null, int|string $store = null): mixed
+    public function getVersion(string $country = 'NL', ?string $endpoint = null, int|string|null $store = null): mixed
     {
         $xpath = match ($country) {
             'BE' => match ($endpoint) {
@@ -162,7 +162,7 @@ class ApiConfiguration extends AbstractConfigProvider
      *
      * @return mixed
      */
-    public function getType(int|string $store = null): mixed
+    public function getType(int|string|null $store = null): mixed
     {
         return $this->getConfigFromXpath(static::XPATH_API_NL_TYPE, $store);
     }

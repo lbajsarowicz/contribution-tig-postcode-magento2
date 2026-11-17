@@ -33,8 +33,7 @@ namespace TIG\Postcode\Test\Unit\Config\Provider;
 
 use TIG\Postcode\Test\TestCase;
 use \TIG\Postcode\Config\Provider\CheckoutConfiguration;
-use \TIG\Postcode\Config\CheckoutConfiguration\GetCheckoutCompatibility;
-use TIG\Postcode\Test\Unit\Config\CheckoutConfiguration\GetCheckoutCompatibilityTest;
+use TIG\Postcode\Config\CheckoutConfiguration\CheckoutConfigurationInterface;
 
 class CheckoutConfigurationTest extends TestCase
 {
@@ -47,7 +46,7 @@ class CheckoutConfigurationTest extends TestCase
      */
     public function testGetConfig()
     {
-        $checkoutCompatibleMock = $this->getFakeMock(GetCheckoutCompatibility::class)->disableOriginalConstructor()
+        $checkoutCompatibleMock = $this->getFakeMock(CheckoutConfigurationInterface::class)->disableOriginalConstructor()
             ->getMock();
         $checkoutCompatibleMock->expects($this->once())->method('getValue')->willReturn('this is a test');
 
@@ -72,8 +71,7 @@ class CheckoutConfigurationTest extends TestCase
      */
     public function testGetConfigWithInvalidClass()
     {
-        $wrongClassMock = $this->getFakeMock(GetCheckoutCompatibilityTest::class)->disableOriginalConstructor()
-            ->getMock();
+        $wrongClassMock = new \stdClass();
 
         $instance = $this->getInstance([
             'postcodeConfiguration' => [

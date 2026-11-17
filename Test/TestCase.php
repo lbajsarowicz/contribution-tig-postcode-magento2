@@ -64,19 +64,9 @@ abstract class TestCase extends TestCaseFinder
     /**
      * Basic setup
      */
-    public function setUp()
+    public function setUp(): void
     {
-        /** Require functions.php to be able to use the translate function */
-        $path = __DIR__ . '/../../../../app/functions.php';
-        if (strpos(__DIR__, 'vendor') === false) {
-            $path = __DIR__ . '/../../../../functions.php';
-        }
-
-        require_once($path);
-
-        ini_set('error_reporting', E_ALL);
-        ini_set('display_errors', '1');
-        ini_set('display_startup_errors', '1');
+        parent::setUp();
 
         $this->objectManager = new ObjectManagerHelper($this);
     }
@@ -100,7 +90,6 @@ abstract class TestCase extends TestCaseFinder
     protected function getMethod($method, $instance)
     {
         $method = new \ReflectionMethod($instance, $method);
-        $method->setAccessible(true);
 
         return $method;
     }
@@ -154,7 +143,6 @@ abstract class TestCase extends TestCaseFinder
 
         $reflection = new \ReflectionObject($instance);
         $property = $reflection->getProperty($property);
-        $property->setAccessible(true);
         return $property->getValue($instance);
     }
 
@@ -173,7 +161,6 @@ abstract class TestCase extends TestCaseFinder
 
         $reflection = new \ReflectionObject($instance);
         $property = $reflection->getProperty($property);
-        $property->setAccessible(true);
         $property->setValue($instance, $value);
 
         return $property;
@@ -183,7 +170,7 @@ abstract class TestCase extends TestCaseFinder
      * @param      $class
      * @param bool $return Immediate call getMock.
      *
-     * @return \PHPUnit_Framework_MockObject_MockBuilder|\PHPUnit_Framework_MockObject_MockObject
+     * @return \PHPUnit\Framework\MockObject\MockBuilder|\PHPUnit\Framework\MockObject\MockObject
      */
     protected function getFakeMock($class, $return = false)
     {
@@ -218,10 +205,10 @@ abstract class TestCase extends TestCaseFinder
      *
      * @param                                          $function
      * @param                                          $response
-     * @param \PHPUnit_Framework_MockObject_MockObject $instance
+     * @param \PHPUnit\Framework\MockObject\MockObject $instance
      */
     protected function mockFunction(
-        \PHPUnit_Framework_MockObject_MockObject $instance,
+        \PHPUnit\Framework\MockObject\MockObject $instance,
         $function,
         $response,
         $with = []

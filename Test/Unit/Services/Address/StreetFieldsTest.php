@@ -34,7 +34,6 @@ namespace TIG\Postcode\Test\Unit\Services\Address;
 use TIG\Postcode\Test\TestCase;
 use TIG\Postcode\Services\Address\StreetFields;
 use TIG\Postcode\Config\Provider\ParserConfiguration;
-use Magento\Quote\Api\Data\AddressExtensionInterface;
 
 class StreetFieldsTest extends TestCase
 {
@@ -44,7 +43,7 @@ class StreetFieldsTest extends TestCase
     /**
      * @return array[]
      */
-    public function parseProvider()
+    public static function parseProvider()
     {
         $attributes = ['tig_housenumber' => 37, 'tig_housenumber_addition' => 'A'];
 
@@ -72,6 +71,7 @@ class StreetFieldsTest extends TestCase
      * @param $expected
      * @throws \Exception
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('parseProvider')]
     public function testParse($street, $attributes, $parseSetting, $expected)
     {
         $parseConfigurationMock = $this->getFakeMock(ParserConfiguration::class)->getMock();
@@ -79,23 +79,8 @@ class StreetFieldsTest extends TestCase
         $parseConfigurationExpects->method('getMergeType');
         $parseConfigurationExpects->willReturn($parseSetting);
 
-        $extensionAttributes = $this->getFakeMock(AddressExtensionInterface::class)
-            ->setMethods(
-                ['getTigHousenumber',
-                 'getTigHousenumberAddition',
-                 'setTigHousenumber',
-                 'setTigHousenumberAddition',
-                 'getCheckoutFields',
-                 'setCheckoutFields',
-                 'getTigZipcodezone',
-                 'setTigZipcodezone'
-                ]
-            )->getMock();
-
-        $attributeHousenumeber = $extensionAttributes->expects($this->any())->method('getTigHousenumber');
-        $attributeHousenumeber->willReturn($attributes['tig_housenumber']);
-        $attributeAddition = $extensionAttributes->expects($this->any())->method('getTigHousenumberAddition');
-        $attributeAddition->willReturn($attributes['tig_housenumber_addition']);
+        $extensionAttributes = new \TIG\Postcode\Services\Address\AttributeParser();
+        $extensionAttributes->set($attributes);
 
         $instance = $this->getInstance([
             'parserConfiguration' => $parseConfigurationMock

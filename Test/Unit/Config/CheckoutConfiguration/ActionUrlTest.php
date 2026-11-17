@@ -56,17 +56,24 @@ class ActionUrlTest extends TestCase
         $expectsStreetFRUrl   = 'http://test.nl/postcode/address/service/fr/getstreet';
 
         $urlInterfaceMock = $this->getFakeMock(UrlInterface::class)->getMock();
-        $expects          = $urlInterfaceMock->expects($this->exactly(3));
-        $expects->method('getUrl')->withConsecutive(
-            ['postcode/address/service', ['_secure' => true]],
-            ['postcode/address/service/be/getpostcode', ['_secure' => true]],
-            ['postcode/address/service/be/getstreet', ['_secure' => true]],
-            ['postcode/address/service/de/getpostcode', ['_secure' => true]],
-            ['postcode/address/service/de/getstreet', ['_secure' => true]],
-            ['postcode/address/service/fr/getpostcode', ['_secure' => true]],
-            ['postcode/address/service/fr/getstreet', ['_secure' => true]]
-        );
-        $expects->willReturnOnConsecutiveCalls($expectsPostcodeNLUrl, $expectsPostcodeBEUrl, $expectsStreetBEUrl, $expectsPostcodeDEUrl, $expectsStreetDEUrl, $expectsPostcodeFRUrl, $expectsStreetFRUrl);
+        $routes = [
+            'postcode/address/service',
+            'postcode/address/service/be/getpostcode',
+            'postcode/address/service/be/getstreet',
+            'postcode/address/service/de/getpostcode',
+            'postcode/address/service/de/getstreet',
+            'postcode/address/service/fr/getpostcode',
+            'postcode/address/service/fr/getstreet'
+        ];
+        $urls = [$expectsPostcodeNLUrl, $expectsPostcodeBEUrl, $expectsStreetBEUrl,
+            $expectsPostcodeDEUrl, $expectsStreetDEUrl, $expectsPostcodeFRUrl, $expectsStreetFRUrl];
+        $index = 0;
+        $urlInterfaceMock->expects($this->exactly(7))->method('getUrl')
+            ->willReturnCallback(function ($route, $params) use ($routes, $urls, &$index) {
+                $this->assertSame($routes[$index], $route);
+                $this->assertSame(['_secure' => true], $params);
+                return $urls[$index++];
+            });
 
         $instance = $this->getInstance(
             [

@@ -42,7 +42,7 @@ class AttributeParserTest extends TestCase
     /**
      * @return array[]
      */
-    public function provider()
+    public static function provider()
     {
         return [
             'valid attributes' => [
@@ -62,6 +62,7 @@ class AttributeParserTest extends TestCase
      * @dataProvider provider
      * @throws \Exception
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('provider')]
     public function testSet($attributes, $expectedHousenumber, $expectedAddition)
     {
         $instance = $this->getInstance();

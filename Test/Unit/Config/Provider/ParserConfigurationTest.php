@@ -34,7 +34,7 @@ namespace TIG\Postcode\Test\Unit\Config\Provider;
 use TIG\Postcode\Config\Provider\ParserConfiguration;
 use TIG\Postcode\Config\Source\Parser;
 
-class ParserConfigurationTest extends AbstractConfigurationTest
+class ParserConfigurationTest extends ConfigurationTestCase
 {
     /** @var ParserConfiguration  */
     protected $instanceClass = ParserConfiguration::class;
@@ -47,7 +47,7 @@ class ParserConfigurationTest extends AbstractConfigurationTest
     /**
      * @return void
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
         $this->instance = $this->getInstance();
@@ -56,7 +56,7 @@ class ParserConfigurationTest extends AbstractConfigurationTest
     /**
      * @return array[]
      */
-    public function mergeProvider()
+    public static function mergeProvider()
     {
         return [
             'Default Parse Line, when some one has alterd the street input' => [
@@ -94,6 +94,7 @@ class ParserConfigurationTest extends AbstractConfigurationTest
      * @param $parseAddition
      * @param $expected
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('mergeProvider')]
     public function testGetMergeType($parseStreet, $parseHouseNumber, $parseAddition, $expected)
     {
         $this->setXpathConsecutive(

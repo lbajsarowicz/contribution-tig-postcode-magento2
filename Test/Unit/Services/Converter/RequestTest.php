@@ -39,7 +39,7 @@ class RequestTest extends TestInterface
     /** @var Converter\Request */
     protected $instanceClass = Converter\Request::class;
 
-    public function requestDataProvider()
+    public static function requestDataProvider()
     {
         return [
             'Correct Request data' => [
@@ -62,6 +62,7 @@ class RequestTest extends TestInterface
      * @param $validation
      * @throws \Exception
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('requestDataProvider')]
     public function testRequestConverter($data, $expected, $validation)
     {
         $instance = $this->getInstance([
@@ -77,7 +78,7 @@ class RequestTest extends TestInterface
      * @param $data
      * @param $return
      *
-     * @return \PHPUnit_Framework_MockObject_MockObject
+     * @return \PHPUnit\Framework\MockObject\MockObject
      */
     private function validationRequestMock($data, $return)
     {
@@ -88,7 +89,7 @@ class RequestTest extends TestInterface
 
         if ($return) {
             $mockExpects = $mock->expects($this->once());
-            $mockExpects->method('getKeys');
+            $mockExpects->method('getRequestFields');
             $mockExpects->willReturn(['postcode', 'huisnummer']);
         }
 

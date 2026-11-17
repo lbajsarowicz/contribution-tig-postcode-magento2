@@ -40,7 +40,7 @@ class ResponseTest extends TestInterface
     /** @var Converter\Response */
     protected $instanceClass = Converter\Response::class;
 
-    public function responseDataProvider()
+    public static function responseDataProvider()
     {
         return [
             'Correct Response Data' => [
@@ -65,6 +65,7 @@ class ResponseTest extends TestInterface
      * @param $validation
      * @throws \Exception
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('responseDataProvider')]
     public function testResponseConverter($dataString, $data, $expected, $validation)
     {
         $instance = $this->getInstance([
@@ -80,7 +81,7 @@ class ResponseTest extends TestInterface
      * @param $data
      * @param $return
      *
-     * @return \PHPUnit_Framework_MockObject_MockObject
+     * @return \PHPUnit\Framework\MockObject\MockObject
      */
     private function validationResponseMock($data, $return)
     {
@@ -96,7 +97,7 @@ class ResponseTest extends TestInterface
      * @param $dataString
      * @param $data
      *
-     * @return \PHPUnit_Framework_MockObject_MockObject
+     * @return \PHPUnit\Framework\MockObject\MockObject
      */
     private function jsonHelperMock($dataString, $data)
     {

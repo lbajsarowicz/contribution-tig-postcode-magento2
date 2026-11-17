@@ -48,7 +48,7 @@ class GetAddressTest extends TestCase
         $instance = $this->getInstance();
         $result = $instance->getEndpoint();
 
-        $this->assertEquals('getAddress/', $result);
+        $this->assertEquals('address-validation/', $result);
     }
 
     /**
@@ -69,7 +69,7 @@ class GetAddressTest extends TestCase
      */
     public function testTheRequestDataIsSetCorrectly()
     {
-        $requestData = ['postcode' => '1014BA', 'huisnummer' => '37'];
+        $requestData = ['zipcode' => '1014BA', 'house_number' => '37'];
         $instance = $this->getInstance();
         $instance->setRequestData($requestData);
 
@@ -96,6 +96,6 @@ class GetAddressTest extends TestCase
     {
         $instance = $this->getInstance();
         $result = $instance->getResponseKeys();
-        $this->assertEquals(['street', 'city'], $result);
+        $this->assertEquals(['results', 'error_code'], $result);
     }
 }

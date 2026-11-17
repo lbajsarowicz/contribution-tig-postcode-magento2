@@ -44,16 +44,18 @@ class ResponseTest extends TestInterface
      */
     public function testWhenResponseHasNoData()
     {
-        $this->assertFalse($this->getInstance()->validate('response'));
+        $this->assertFalse($this->getInstance()->validateResponseData('response'));
     }
 
     /**
      * @return void
      * @throws \Exception
      */
-    public function testDefaultGetKeys()
+    public function testConfiguredResponseKeys()
     {
-        $expected = ['street', 'city'];
-        $this->assertEquals($expected, $this->getInstance()->getKeys());
+        $instance = $this->getInstance();
+        $instance->setKeyFields(['street', 'city']);
+        $this->assertTrue($instance->validateResponseData(['street' => 'Kabelweg', 'city' => 'Amsterdam']));
+        $this->assertFalse($instance->validateResponseData(['city' => 'Amsterdam']));
     }
 }

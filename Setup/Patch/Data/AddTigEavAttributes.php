@@ -145,6 +145,8 @@ class AddTigEavAttributes implements DataPatchInterface, PatchRevertableInterfac
         $this->addAttributeToForms(AttributeProvider::ENTITY, 'tig_street');
 
         $this->moduleDataSetup->getConnection()->endSetup();
+
+        return $this;
     }
 
     /**

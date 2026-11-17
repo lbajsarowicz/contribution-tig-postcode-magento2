@@ -34,20 +34,20 @@ namespace TIG\Postcode\Test\Unit\Config\Provider;
 use TIG\Postcode\Config\Provider\ClientConfiguration;
 use TIG\Postcode\Config\Provider\ModuleConfiguration;
 
-class ClientConfigurationTest extends AbstractConfigurationTest
+class ClientConfigurationTest extends ConfigurationTestCase
 {
     /** @var ClientConfiguration  */
     protected $instanceClass = ClientConfiguration::class;
 
     /**
-     * @var ModuleConfiguration|\PHPUnit_Framework_MockObject_MockObject
+     * @var ModuleConfiguration|\PHPUnit\Framework\MockObject\MockObject
      */
     private $moduleMock;
 
     /**
      * @return array
      */
-    public function modusXpathProvider()
+    public static function modusXpathProvider()
     {
         return [
             'get client xpath where modus is test'  => [
@@ -94,6 +94,7 @@ class ClientConfigurationTest extends AbstractConfigurationTest
      * @param $value
      * @param $expected
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('modusXpathProvider')]
     public function testGetModusXpath($testModus, $value, $expected)
     {
         $this->setModuleMock($testModus);
@@ -130,8 +131,7 @@ class ClientConfigurationTest extends AbstractConfigurationTest
     private function setModuleMock($testMode)
     {
         $this->moduleMock = $this->getFakeMock(ModuleConfiguration::class)->disableOriginalConstructor()->getMock();
-        $moduleConfigExpects = $this->moduleMock->expects($this->any());
-        $moduleConfigExpects->method('isModusTest');
+        $moduleConfigExpects = $this->moduleMock->method('isModusTest');
         $moduleConfigExpects->willReturn($testMode);
     }
 }

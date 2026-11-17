@@ -41,25 +41,25 @@ use Magento\Framework\Encryption\Encryptor;
 
 use TIG\Postcode\Test\TestCase;
 
-abstract class AbstractConfigurationTest extends TestCase
+abstract class ConfigurationTestCase extends TestCase
 {
     /**
-     * @var ScopeConfigInterface|\PHPUnit_Framework_MockObject_MockObject
+     * @var ScopeConfigInterface|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $scopeConfigMock;
 
     /**
-     * @var ModuleManager|\PHPUnit_Framework_MockObject_MockObject
+     * @var ModuleManager|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $moduleManagerMock;
 
     /**
-     * @var StoreManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+     * @var StoreManagerInterface|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $storeManagerMock;
 
     /**
-     * @var Encryptor|\PHPUnit_Framework_MockObject_MockObject
+     * @var Encryptor|\PHPUnit\Framework\MockObject\MockObject
      */
     protected $cryptMock;
 
@@ -121,12 +121,15 @@ abstract class AbstractConfigurationTest extends TestCase
      */
     protected function setXpathConsecutive($xpaths = [], $returns = [])
     {
-        $getValueExpects = $this->scopeConfigMock->expects($this->any());
-        $getValueExpects->method('getValue');
-        $getValueExpects->withConsecutive($this->onConsecutiveCalls($xpaths));
-        $getValueExpects->will(
-            new \PHPUnit_Framework_MockObject_Stub_ConsecutiveCalls($returns)
-        );
+        $index = 0;
+        $this->scopeConfigMock->expects($this->exactly(count($xpaths)))
+            ->method('getValue')
+            ->willReturnCallback(function ($xpath, $scope, $storeId) use ($xpaths, $returns, &$index) {
+                $this->assertSame($xpaths[$index], $xpath);
+                $this->assertSame(ScopeInterface::SCOPE_STORE, $scope);
+                $this->assertNull($storeId);
+                return $returns[$index++];
+            });
     }
 
     /**
@@ -135,8 +138,7 @@ abstract class AbstractConfigurationTest extends TestCase
      */
     protected function setModuleOutputEnabled($enabled = true)
     {
-        $moduleOutPutMock = $this->moduleManagerMock->expects($this->any());
-        $moduleOutPutMock->method('isOutputEnabled');
+        $moduleOutPutMock = $this->moduleManagerMock->method('isOutputEnabled');
         $moduleOutPutMock->with('TIG_Postcode');
         $moduleOutPutMock->willReturn($enabled);
     }
@@ -182,6 +184,8 @@ abstract class AbstractConfigurationTest extends TestCase
      */
     protected function setModus($modus)
     {
-        $this->setXpath(ModuleConfiguration::XPATH_CONFIGURATION_MODUS, $modus, null, $this->any());
+        $this->scopeConfigMock->method('getValue')
+            ->with(ModuleConfiguration::XPATH_CONFIGURATION_MODUS, ScopeInterface::SCOPE_STORE, null)
+            ->willReturn($modus);
     }
 }

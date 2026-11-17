@@ -34,7 +34,7 @@ namespace TIG\Postcode\Test\Unit\Config\Provider;
 
 use TIG\Postcode\Config\Provider\ApiConfiguration;
 
-class ApiConfigurationTest extends AbstractConfigurationTest
+class ApiConfigurationTest extends ConfigurationTestCase
 {
     /** @var ApiConfiguration */
     protected $instanceClass = ApiConfiguration::class;
@@ -69,7 +69,7 @@ class ApiConfigurationTest extends AbstractConfigurationTest
     /**
      * @return void
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
         $this->instance = $this->getInstance();
@@ -137,17 +137,15 @@ class ApiConfigurationTest extends AbstractConfigurationTest
         $this->setXpathConsecutive(
             [
                 ApiConfiguration::XPATH_API_NL_BASE,
-                ApiConfiguration::XPATH_API_NL_POSTCODE_VERSION,
-                ApiConfiguration::XPATH_API_NL_TYPE
+                ApiConfiguration::XPATH_API_NL_POSTCODE_VERSION
             ],
             [
                 $this->base,
-                $this->version,
-                $this->type
+                $this->version
             ]
         );
 
-        $expected = $this->base . '/' . $this->version . '/' . $this->type . '/';
+        $expected = $this->base . '/' . $this->version . '/';
         $this->assertEquals($expected, $this->instance->getBaseUri());
     }
 
@@ -160,12 +158,10 @@ class ApiConfigurationTest extends AbstractConfigurationTest
             [
                 ApiConfiguration::XPATH_API_BE_BASE,
                 ApiConfiguration::XPATH_API_BE_POSTCODE_VERSION,
-                ApiConfiguration::XPATH_API_BE_STREET_VERSION,
             ],
             [
                 $this->beBase,
-                $this->postcodeVersion,
-                $this->streetVersion
+                $this->postcodeVersion
             ]
         );
 
@@ -182,12 +178,10 @@ class ApiConfigurationTest extends AbstractConfigurationTest
             [
                 ApiConfiguration::XPATH_API_DE_BASE,
                 ApiConfiguration::XPATH_API_DE_POSTCODE_VERSION,
-                ApiConfiguration::XPATH_API_DE_STREET_VERSION,
             ],
             [
                 $this->deBase,
-                $this->postcodeVersion,
-                $this->streetVersion
+                $this->postcodeVersion
             ]
         );
 
@@ -204,12 +198,10 @@ class ApiConfigurationTest extends AbstractConfigurationTest
             [
                 ApiConfiguration::XPATH_API_FR_BASE,
                 ApiConfiguration::XPATH_API_FR_POSTCODE_VERSION,
-                ApiConfiguration::XPATH_API_FR_STREET_VERSION,
             ],
             [
                 $this->frBase,
-                $this->postcodeVersion,
-                $this->streetVersion
+                $this->postcodeVersion
             ]
         );
 
@@ -225,12 +217,10 @@ class ApiConfigurationTest extends AbstractConfigurationTest
         $this->setXpathConsecutive(
             [
                 ApiConfiguration::XPATH_API_BE_BASE,
-                ApiConfiguration::XPATH_API_BE_POSTCODE_VERSION,
                 ApiConfiguration::XPATH_API_BE_STREET_VERSION,
             ],
             [
                 $this->beBase,
-                $this->postcodeVersion,
                 $this->streetVersion
             ]
         );
@@ -247,12 +237,10 @@ class ApiConfigurationTest extends AbstractConfigurationTest
         $this->setXpathConsecutive(
             [
                 ApiConfiguration::XPATH_API_DE_BASE,
-                ApiConfiguration::XPATH_API_DE_POSTCODE_VERSION,
                 ApiConfiguration::XPATH_API_DE_STREET_VERSION,
             ],
             [
                 $this->deBase,
-                $this->postcodeVersion,
                 $this->streetVersion
             ]
         );
@@ -269,12 +257,10 @@ class ApiConfigurationTest extends AbstractConfigurationTest
         $this->setXpathConsecutive(
             [
                 ApiConfiguration::XPATH_API_FR_BASE,
-                ApiConfiguration::XPATH_API_FR_POSTCODE_VERSION,
                 ApiConfiguration::XPATH_API_FR_STREET_VERSION,
             ],
             [
                 $this->frBase,
-                $this->postcodeVersion,
                 $this->streetVersion
             ]
         );
